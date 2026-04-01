@@ -1,4 +1,5 @@
 import json
+import os
 import statistics
 import time
 from random import randint, seed
@@ -6,6 +7,7 @@ from random import randint, seed
 from vllm import LLM, SamplingParams
 from vllm.config import AttentionConfig
 from vllm.inputs import TokensPrompt
+from vllm.v1.attention.backends.registry import AttentionBackendEnum
 
 MODEL = "Qwen/Qwen3-14B"
 NUM_SEQS = 512
@@ -13,7 +15,31 @@ NUM_TRIALS = 5
 NUM_WARMUP = 2
 MAX_INPUT_LEN = 1024
 MAX_OUTPUT_LEN = 1024
-RESULT_FILE = "fa4_vllm_result.json"
+
+# ATTN_BACKEND mirrors mini-sglang naming:
+#   fa4      -> FlashAttention v4
+#   fa3 / fa -> FlashAttention v3
+#   fa2      -> FlashAttention v2
+#   fi       -> FlashInfer
+# vLLM separates flash_attn_version from backend enum, so we translate here.
+ATTN_BACKEND = os.environ.get("ATTN_BACKEND", "fa4")
+RESULT_FILE = f"vllm_{ATTN_BACKEND.replace(',', '_')}_result.json"
+
+
+def build_attention_config(backend: str) -> AttentionConfig:
+    mapping = {
+        "fa4": AttentionConfig(flash_attn_version=4),
+        "fa3": AttentionConfig(flash_attn_version=3),
+        "fa":  AttentionConfig(flash_attn_version=3),
+        "fa2": AttentionConfig(flash_attn_version=2),
+        "fi":  AttentionConfig(backend=AttentionBackendEnum.FLASHINFER),
+    }
+    if backend not in mapping:
+        raise ValueError(
+            f"Unknown ATTN_BACKEND '{backend}'. "
+            f"Valid options: {list(mapping.keys())}"
+        )
+    return mapping[backend]
 
 
 def make_inputs(rng_seed: int):
@@ -35,10 +61,10 @@ def make_inputs(rng_seed: int):
 
 
 def main():
-    print(f"Loading {MODEL} with FA4 backend...")
+    print(f"Loading {MODEL} with backend: {ATTN_BACKEND}")
     llm = LLM(
         model=MODEL,
-        attention_config=AttentionConfig(flash_attn_version=4),
+        attention_config=build_attention_config(ATTN_BACKEND),
         max_model_len=4096,
         gpu_memory_utilization=0.9,
         enforce_eager=False,
@@ -74,7 +100,7 @@ def main():
 
     result = {
         "system": "vllm",
-        "backend": "fa4",
+        "backend": ATTN_BACKEND,
         "model": MODEL,
         "num_seqs": NUM_SEQS,
         "total_tokens": total_tokens,

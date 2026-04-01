@@ -21,6 +21,7 @@ MAX_OUTPUT_LEN = 1024
 #   fa3 / fa -> FlashAttention v3
 #   fa2      -> FlashAttention v2
 #   fi       -> FlashInfer
+#   trtllm   -> FlashInfer + TRT-LLM FMHA kernels (use_trtllm_attention=True)
 # vLLM separates flash_attn_version from backend enum, so we translate here.
 ATTN_BACKEND = os.environ.get("ATTN_BACKEND", "fa4")
 RESULT_FILE = f"vllm_{ATTN_BACKEND.replace(',', '_')}_result.json"
@@ -28,11 +29,12 @@ RESULT_FILE = f"vllm_{ATTN_BACKEND.replace(',', '_')}_result.json"
 
 def build_attention_config(backend: str) -> AttentionConfig:
     mapping = {
-        "fa4": AttentionConfig(flash_attn_version=4),
-        "fa3": AttentionConfig(flash_attn_version=3),
-        "fa":  AttentionConfig(flash_attn_version=3),
-        "fa2": AttentionConfig(flash_attn_version=2),
-        "fi":  AttentionConfig(backend=AttentionBackendEnum.FLASHINFER),
+        "fa4":    AttentionConfig(flash_attn_version=4),
+        "fa3":    AttentionConfig(flash_attn_version=3),
+        "fa":     AttentionConfig(flash_attn_version=3),
+        "fa2":    AttentionConfig(flash_attn_version=2),
+        "fi":     AttentionConfig(backend=AttentionBackendEnum.FLASHINFER),
+        "trtllm": AttentionConfig(backend=AttentionBackendEnum.FLASHINFER, use_trtllm_attention=True),
     }
     if backend not in mapping:
         raise ValueError(

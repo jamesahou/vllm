@@ -70,6 +70,7 @@ def main():
         max_model_len=4096,
         gpu_memory_utilization=0.9,
         enforce_eager=False,
+        max_num_seqs=NUM_SEQS,
     )
 
     prompts, sampling_params, max_tokens_list = make_inputs(rng_seed=0)

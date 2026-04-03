@@ -130,10 +130,10 @@ def _create_vllm_config(
 ) -> VllmConfig:
     """Create a VllmConfig for benchmarking with mock model methods."""
     model_config = ModelConfig(
-        model="meta-llama/Meta-Llama-3-8B",
-        tokenizer="meta-llama/Meta-Llama-3-8B",
+        model="Qwen/Qwen3-14B",
+        tokenizer="Qwen/Qwen3-14B",
         trust_remote_code=False,
-        dtype="auto",  # Use model's native dtype
+        dtype="bfloat16",  # Explicit dtype — model name is a label only, all arch params are mocked below
         seed=0,
         max_model_len=1024,
     )
@@ -503,7 +503,7 @@ def run_attention_benchmark(config: BenchmarkConfig) -> BenchmarkResult:
 
     # Suppress vLLM logs during setup to reduce spam
     with log_warnings_and_errors_only():
-        # Create vllm_config first - uses model's native dtype via "auto"
+        # Create vllm_config first — dtype is bfloat16, all arch params are mocked
         vllm_config = _create_vllm_config(config, max_num_blocks)
         dtype = vllm_config.model_config.dtype
 

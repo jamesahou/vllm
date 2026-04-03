@@ -510,6 +510,12 @@ def run_attention_benchmark(config: BenchmarkConfig) -> BenchmarkResult:
         # Wrap everything in set_current_vllm_config context
         # This is required for backends like flashinfer that need global config
         with set_current_vllm_config(vllm_config):
+            if config.backend == "FLASHINFER":
+                from vllm.utils.flashinfer import can_use_trtllm_attention, supports_trtllm_attention
+                import logging
+                logging.getLogger("vllm").setLevel(logging.WARNING)
+                _trtllm_active = can_use_trtllm_attention(config.num_q_heads, config.num_kv_heads)
+                print(f"[FLASHINFER] SM100={supports_trtllm_attention()} trtllm_active={_trtllm_active}")
             backend_class, impl, layer = _create_backend_impl(
                 backend_cfg, config, device, dtype
             )
